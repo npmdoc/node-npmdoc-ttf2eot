@@ -1,0 +1,219 @@
+<html><head></head><body><div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a href="https://github.com/fontello/ttf2eot#readme">ttf2eot (v2.0.0)</a>
+</h1>
+<h4>Convert TTF font to EOT</h4>
+<div class="apidocSectionDiv"><a href="#apidoc.tableOfContents" id="apidoc.tableOfContents"><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.ttf2eot">module ttf2eot</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.ttf2eot.ttf2eot">
+            function <span class="apidocSignatureSpan"></span>ttf2eot
+            <span class="apidocSignatureSpan">(arr)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.ttf2eot" id="apidoc.module.ttf2eot">module ttf2eot</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.ttf2eot.ttf2eot" id="apidoc.element.ttf2eot.ttf2eot">
+        function <span class="apidocSignatureSpan"></span>ttf2eot
+        <span class="apidocSignatureSpan">(arr)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function ttf2eot(arr) {
+  var buf = new ByteBuffer(arr);
+  var out = new ByteBuffer(SIZEOF.EOT_PREFIX),
+      i, j;
+
+  out.fill(0);
+  out.setUint32(EOT_OFFSET.FONT_LENGTH, buf.length, true);
+  out.setUint32(EOT_OFFSET.VERSION, MAGIC.EOT_VERSION, true);
+  out.setUint8(EOT_OFFSET.CHARSET, MAGIC.EOT_CHARSET);
+  out.setUint16(EOT_OFFSET.MAGIC, MAGIC.EOT_MAGIC, true);
+
+  var familyName = [],
+      subfamilyName = [],
+      fullName = [],
+      versionString = [];
+
+  var haveOS2 = false,
+      haveName = false,
+      haveHead = false;
+
+  var numTables = buf.getUint16 (SFNT_OFFSET.NUMTABLES);
+
+  for (i = 0; i &lt; numTables; ++i) {
+    var data = new ByteBuffer(buf, SIZEOF.SFNT_HEADER + i * SIZEOF.SFNT_TABLE_ENTRY);
+    var tableEntry = {
+      tag: data.toString (SFNT_OFFSET.TABLE_TAG, 4),
+      offset: data.getUint32 (SFNT_OFFSET.TABLE_OFFSET),
+      length: data.getUint32 (SFNT_OFFSET.TABLE_LENGTH)
+    };
+
+    var table = new ByteBuffer(buf, tableEntry.offset, tableEntry.length);
+
+    if (tableEntry.tag === 'OS/2') {
+      haveOS2 = true;
+
+      for (j = 0; j &lt; 10; ++j) {
+        out.setUint8 (EOT_OFFSET.FONT_PANOSE + j, table.getUint8 (SFNT_OFFSET.OS2_FONT_PANOSE + j));
+      }
+
+<span class="apidocCodeCommentSpan">      /*jshint bitwise:false */
+</span>      out.setUint8 (EOT_OFFSET.ITALIC, table.getUint16 (SFNT_OFFSET.OS2_FS_SELECTION) &amp; 0x01);
+      out.setUint32 (EOT_OFFSET.WEIGHT, table.getUint16 (SFNT_OFFSET.OS2_WEIGHT), true);
+
+      for (j = 0; j &lt; 4; ++j) {
+        out.setUint32 (EOT_OFFSET.UNICODE_RANGE + j * 4, table.getUint32 (SFNT_OFFSET.OS2_UNICODE_RANGE + j * 4), true);
+      }
+
+      for (j = 0; j &lt; 2; ++j) {
+        out.setUint32 (EOT_OFFSET.CODEPAGE_RANGE + j * 4, table.getUint32 (SFNT_OFFSET.OS2_CODEPAGE_RANGE + j * 4), true);
+      }
+
+    } else if (tableEntry.tag === 'head') {
+
+      haveHead = true;
+      out.setUint32 (EOT_OFFSET.CHECKSUM_ADJUSTMENT, table.getUint32 (SFNT_OFFSET.HEAD_CHECKSUM_ADJUSTMENT), true);
+
+    } else if (tableEntry.tag === 'name') {
+
+      haveName = true;
+
+      var nameTable = {
+        format: table.getUint16 (SFNT_OFFSET.NAMETABLE_FORMAT),
+        count: table.getUint16 (SFNT_OFFSET.NAMETABLE_COUNT),
+        stringOffset: table.getUint16 (SFNT_OFFSET.NAMETABLE_STRING_OFFSET)
+      };
+
+      for (j = 0; j &lt; nameTable.count; ++j) {
+        var nameRecord = new ByteBuffer(table, SIZEOF.SFNT_NAMETABLE + j * SIZEOF.SFNT_NAMETABLE_ENTRY);
+        var name = {
+          platformID: nameRecord.getUint16 (SFNT_OFFSET.NAME_PLATFORM_ID),
+          encodingID: nameRecord.getUint16 (SFNT_OFFSET.NAME_ENCODING_ID),
+          languageID: nameRecord.getUint16 (SFNT_OFFSET.NAME_LANGUAGE_ID),
+          nameID: nameRecord.getUint16 (SFNT_OFFSET.NAME_NAME_ID),
+          length: nameRecord.getUint16 (SFNT_OFFSET.NAME_LENGTH),
+          offset: nameRecord.getUint16 (SFNT_OFFSET.NAME_OFFSET)
+        };
+
+        if (name.platformID === 3 &amp;&amp; name.encodingID === 1 &amp;&amp; name.languageID === MAGIC.LANGUAGE_ENGLISH) {
+          var s = strbuf (new ByteBuffer(table, nameTable.stringOffset + name.offset, name.length));
+
+          switch (name.nameID) {
+            case 1:
+              familyName = s;
+              break;
+            case 2:
+              subfamilyName = s;
+              break;
+            case 4:
+              fullName = s;
+              break;
+            case 5:
+              versionString = s;
+              break;
+          }
+        }
+      }
+    }
+    if (haveOS2 &amp;&amp; haveName &amp;&amp; haveHead) { break; }
+  }
+
+  if (!(haveOS2 &amp;&amp; haveName &amp;&amp; haveHead)) {
+    throw new Error ('Required section not found');
+  }
+
+  // Calculate final length
+  var len =
+   out.length +
+   familyName.length +
+   subfamilyName.length +
+   versionString.length +
+   fullName.length +
+   2 +
+   buf.length;
+
+  // Create final buffer with the the same array type as input one.
+  var eot = new ByteBuffer(len);
+
+  eot.writeBytes(out.buffer);
+  eot.writeBytes(familyName.buffer);
+  eot.writeBytes(subfamilyName.buffer);
+  eot.writeBytes(versionString.buffer);
+  eot.writeBytes(fullName.buffer);
+  eot.writeBytes([ 0, 0 ]);
+  eot.writeBytes(buf.buffer);
+
+  eot.setUint32(EOT_O ...</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
+</body></html>
